@@ -1,0 +1,75 @@
+BasedOnStyle: LLVM
+
+Language: Cpp
+
+AccessModifierOffset: -3
+AlignAfterOpenBracket: Align
+AlignArrayOfStructures: Right
+AlignConsecutiveAssignments: Consecutive
+AlignConsecutiveBitFields: Consecutive
+AlignConsecutiveDeclarations: Consecutive
+AlignConsecutiveMacros: Consecutive
+AlignEscapedNewlines: Left
+AlignOperands: AlignAfterOperator
+AlignTrailingComments: true
+AllowBreakBeforeNoexceptSpecifier: Never
+AllowShortBlocksOnASingleLine: Empty
+AllowShortCaseExpressionOnASingleLine: true
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortCompoundRequirementOnASingleLine: true
+AllowShortEnumsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLambdasOnASingleLine: All
+AllowShortLoopsOnASingleLine: false
+AllowShortNamespacesOnASingleLine: false
+AlwaysBreakBeforeMultilineStrings: false
+
+BinPackArguments: true
+BinPackParameters: OnePerLine
+BreakAdjacentStringLiterals: true
+BreakAfterReturnType: Automatic
+BreakBeforeBinaryOperators: All
+BreakBeforeBraces: Attach
+BreakBeforeTernaryOperators: true
+BreakInheritanceList: AfterColon
+BreakStringLiterals: true
+BreakTemplateDeclarations: Yes
+
+ColumnLimit: 80
+
+DerivePointerAlignment: false
+
+FixNamespaceComments: true
+
+IncludeBlocks: Regroup
+IndentWidth: 4
+IndentCaseBlocks: false
+IndentCaseLabels: true
+IndentGotoLabels: true
+
+NamespaceIndentation: None
+
+PackConstructorInitializers: CurrentLine
+PenaltyReturnTypeOnItsOwnLine: 10000
+PointerAlignment: Left
+
+ReferenceAlignment: Left
+RemoveBracesLLVM: true
+RemoveEmptyLinesInUnwrappedLines: true
+
+SeparateDefinitionBlocks: Always
+SortIncludes: true
+SortUsingDeclarations: true
+
+SpaceAfterLogicalNot: false
+SpaceAfterOperatorKeyword: false
+SpaceAfterTemplateKeyword: false
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCpp11BracedList: true
+SpaceBeforeCtorInitializerColon: true
+SpacesInAngles: false
+SpacesInCStyleCastParentheses: false
+SpacesInConditionalStatement: false
+SpacesInContainerLiterals: false
+SpacesInParentheses : false
