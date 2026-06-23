@@ -41,5 +41,5 @@ int main() {
 
     tn::transform(std::minus(), c, c, b);
 
-    fmt::println("{}", c.view({1, 0}));
+    fmt::println("{}", c(1, 0));
 }

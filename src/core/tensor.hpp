@@ -6,7 +6,6 @@
 #include "index.hpp"
 #include "transpose.hpp"
 #include "types.hpp"
-#include "view.hpp"
 
 #include <initializer_list>
 
@@ -124,23 +123,13 @@ class tensor {
         return ::tn::matrix_hermitian_conj(*this);
     }
 
-    // Methods for taking views
-    template<class U>
-        requires(std::is_integral_v<typename U::value_type>)
-    auto view(const U& index) const {
-        return ::tn::view(*this, index);
-    }
-
-    template<class U>
-        requires(std::is_integral_v<U>)
-    auto view(std::initializer_list<U> index) const {
-        return ::tn::view(*this, index);
-    }
-
-    template<class U>
-        requires(std::is_integral_v<U>)
-    auto view(U index) const {
-        return ::tn::view(*this, index);
+    // Get the value corresponding to a size 1 tensor
+    auto item() const {
+        TN_ASSERT(this->size() == 1,
+                  "Tensor must have size 1 to take item, instead got tensor of "
+                  "size {}",
+                  this->size());
+        return m_data[0];
     }
 
     explicit tensor(const extents_type& extent)
@@ -266,17 +255,13 @@ class tensor {
 
     template<class U>
         requires(std::integral<typename U::value_type>)
-    constexpr auto operator()(U&& indices) const {
-        TN_ASSERT(indices.size() == this->rank(),
-                  "Invalid index {} for tensor of rank {}", indices,
-                  this->rank());
-        auto idx = flatten_index(std::forward<U>(indices), this->extents());
-        return m_data[idx];
+    constexpr auto operator()(const U& indices) const {
+        return ::tn::index(*this, indices);
     }
 
     template<std::integral... Args>
     constexpr auto operator()(Args... indices) const {
-        return this->operator()(std::array {indices...});
+        return ::tn::index(*this, std::array {indices...});
     }
 
  private:

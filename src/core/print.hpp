@@ -49,7 +49,7 @@ inline void pretty_print_vector(std::ostringstream& ss,
             tmp << "..., ";
             i = tensor.size() - opts.edge_items - 1;
         } else {
-            auto x = tensor(i);
+            auto x = tensor(i).item();
 
             if (x >= 0)
                 tmp << " ";
@@ -89,7 +89,7 @@ inline void pretty_print_matrix(std::ostringstream& ss,
             ss << "...,\n" << std::string(offset, ' ');
             i = tensor.extent() - opts.edge_items - 1;
         } else {
-            pretty_print_select(ss, tensor.view({i}), offset + 1, edges);
+            pretty_print_select(ss, tensor(i), offset + 1, edges);
             if (i != tensor.extent() - 1)
                 ss << ",\n" << std::string(offset, ' ');
         }
@@ -110,7 +110,7 @@ inline void pretty_print_tensor(std::ostringstream& ss,
             ss << "...,\n\n" << std::string(offset, ' ');
             i = tensor.extent() - opts.edge_items - 1;
         } else {
-            pretty_print_select(ss, tensor.view({i}), offset + 1, edges);
+            pretty_print_select(ss, tensor(i), offset + 1, edges);
             if (i != tensor.extent() - 1)
                 ss << ",\n\n" << std::string(offset, ' ');
         }
