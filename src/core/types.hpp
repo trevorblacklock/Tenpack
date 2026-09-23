@@ -27,7 +27,9 @@ concept layout_like = row_like<Tp> || column_like<Tp>;
 
 template<class Tp>
 concept element_like = std::same_as<Tp, double> || std::same_as<Tp, float>
-                    || std::same_as<Tp, int32_t> || std::same_as<Tp, int64_t>;
+                    || std::same_as<Tp, int32_t> || std::same_as<Tp, int64_t>
+                    || std::same_as<Tp, std::complex<double>>
+                    || std::same_as<Tp, std::complex<float>>;
 
 template<class Tp>
 struct is_complex : std::false_type {};

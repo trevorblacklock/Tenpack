@@ -3,11 +3,13 @@
 
 #include "allocator.hpp"
 #include "config.hpp"
+#include "extents.hpp"
 #include "index.hpp"
 #include "transpose.hpp"
 #include "types.hpp"
 
 #include <initializer_list>
+#include <memory>
 
 namespace tn {
 
@@ -123,13 +125,100 @@ class tensor {
         return ::tn::matrix_hermitian_conj(*this);
     }
 
-    // Get the value corresponding to a size 1 tensor
-    auto item() const {
-        TN_ASSERT(this->size() == 1,
-                  "Tensor must have size 1 to take item, instead got tensor of "
-                  "size {}",
+    template<std::integral Arg>
+    constexpr auto& item(Arg index) {
+        TN_ASSERT(std::cmp_less(index, this->size()),
+                  "Index of {} out of bounds for tensor of size {}", index,
                   this->size());
-        return m_data[0];
+        return m_data[index];
+    }
+
+    template<std::integral Arg>
+    constexpr auto item(Arg index) const {
+        TN_ASSERT(std::cmp_less(index, this->size()),
+                  "Index of {} out of bounds for tensor of size {}", index,
+                  this->size());
+        return m_data[index];
+    }
+
+    constexpr auto& item() {
+        TN_ASSERT(this->size() == 1, "Calling item() with no argument is only "
+                                     "defined for a tensor of size 1")
+        return this->item(0);
+    }
+
+    constexpr auto item() const {
+        TN_ASSERT(this->size() == 1, "Calling item() with no argument is only "
+                                     "defined for a tensor of size 1")
+        return this->item(0);
+    }
+
+    template<class U>
+        requires(sizeof(Tp) % sizeof(U) == 0 || sizeof(U) % sizeof(Tp) == 0)
+    constexpr auto view() const {
+        auto shape   = this->shape();
+        auto strides = this->strides();
+        auto found_ptr
+            = std::find(strides.begin(), strides.end(), stride_t {1});
+        TN_ASSERT(found_ptr != strides.end()
+                      && sizeof(Tp) * shape[*found_ptr] % sizeof(U) == 0,
+                  "Data must have a contiguous axis which is a multiple of {} "
+                  "bytes to form a view",
+                  sizeof(U));
+
+        auto low_axis = std::distance(strides.begin(), found_ptr);
+        auto ptr_view
+            = std::reinterpret_pointer_cast<U[]>(this->data_accessor());
+        auto shape_view  = std::vector(shape);
+        auto stride_view = std::vector(strides);
+
+        if constexpr (sizeof(U) > sizeof(Tp)) {
+            constexpr auto ratio = sizeof(U) / sizeof(Tp);
+            shape_view[low_axis] /= ratio;
+            for (shape_t i = 0; i < this->rank(); ++i) {
+                if (std::cmp_equal(i, low_axis))
+                    continue;
+                stride_view[i] /= ratio;
+            }
+        } else {
+            constexpr auto ratio = sizeof(U) / sizeof(Tp);
+            shape_view[low_axis] *= ratio;
+            for (shape_t i = 0; i < this->rank(); ++i) {
+                if (std::cmp_equal(i, low_axis))
+                    continue;
+                stride_view[i] *= ratio;
+            }
+        }
+
+        auto extent = ::tn::core::extents<Layout>(std::move(shape_view),
+                                                  std::move(stride_view));
+
+        return ::tn::tensor<U, Layout, Alloc>(std::move(extent),
+                                              std::move(ptr_view));
+    }
+
+    template<class U>
+        requires(std::integral<typename U::value_type>)
+    constexpr auto& item(const U& indices) {
+        return m_data[::tn::core::flatten_index(indices, *m_extents)];
+    }
+
+    template<class U>
+        requires(std::integral<typename U::value_type>)
+    constexpr auto item(const U& indices) const {
+        return m_data[::tn::core::flatten_index(indices, *m_extents)];
+    }
+
+    template<std::integral... Args>
+    constexpr auto& item(Args... indices) {
+        return m_data[::tn::core::flatten_index(std::array {indices...},
+                                                *m_extents)];
+    }
+
+    template<std::integral... Args>
+    constexpr auto item(Args... indices) const {
+        return m_data[::tn::core::flatten_index(std::array {indices...},
+                                                *m_extents)];
     }
 
     explicit tensor(const extents_type& extent)
@@ -287,7 +376,32 @@ template<class Tp     = double,
 constexpr auto empty(std::initializer_list<U> shape) {
     TN_ASSERT(core::range_positive(shape), "Invalid shape {}, must be positive",
               shape);
-    return empty(std::vector<shape_t>(shape.begin(), shape.end()));
+    return empty<Tp, Layout, Alloc>(
+        std::vector<shape_t>(shape.begin(), shape.end()));
+}
+
+template<class Tp     = double,
+         class Layout = TN_DEFAULT_LAYOUT,
+         class Alloc  = TN_DEFAULT_ALLOCATOR(Tp),
+         class U>
+    requires(std::is_convertible_v<std::decay_t<U>, std::vector<shape_t>>)
+constexpr auto full(U&& shape, const Tp value) {
+    auto extent = core::extents<Layout>(std::forward<U>(shape));
+    auto t      = tensor<Tp, Layout, Alloc>(std::move(extent));
+    std::fill(t.data(), t.data() + t.size(), value);
+    return t;
+}
+
+template<class Tp     = double,
+         class Layout = TN_DEFAULT_LAYOUT,
+         class Alloc  = TN_DEFAULT_ALLOCATOR(Tp),
+         class U>
+    requires(std::is_convertible_v<U, shape_t>)
+constexpr auto full(std::initializer_list<U> shape, const Tp value) {
+    TN_ASSERT(core::range_positive(shape), "Invalid shape {}, must be positive",
+              shape);
+    return full<Tp, Layout, Alloc>(
+        std::vector<shape_t>(shape.begin(), shape.end()), value);
 }
 
 template<class Tp     = double,
@@ -296,22 +410,16 @@ template<class Tp     = double,
          class U>
     requires(std::is_convertible_v<std::decay_t<U>, std::vector<shape_t>>)
 constexpr auto zeros(U&& shape) {
-    auto extent = core::extents<Layout>(std::forward<U>(shape));
-    auto t      = tensor<Tp, Layout, Alloc>(std::move(extent));
-    std::fill(t.data(), t.data() + t.size(), Tp {});
-    return t;
+    return ::tn::full<Tp, Layout, Alloc>(std::forward<U>(shape), Tp {0});
 }
 
 template<class Tp     = double,
          class Layout = TN_DEFAULT_LAYOUT,
          class Alloc  = TN_DEFAULT_ALLOCATOR(Tp),
-         std::integral... Args,
          class U>
     requires(std::is_convertible_v<U, shape_t>)
 constexpr auto zeros(std::initializer_list<U> shape) {
-    TN_ASSERT(core::range_positive(shape), "Invalid shape {}, must be positive",
-              shape);
-    return zeros(std::vector<shape_t>(shape.begin(), shape.end()));
+    return ::tn::full<Tp, Layout, Alloc>(shape, Tp {0});
 }
 
 template<class Tp     = double,
@@ -320,10 +428,7 @@ template<class Tp     = double,
          class U>
     requires(std::is_convertible_v<std::decay_t<U>, std::vector<shape_t>>)
 constexpr auto ones(U&& shape) {
-    auto extent = core::extents<Layout>(std::forward<U>(shape));
-    auto t      = tensor<Tp, Layout, Alloc>(std::move(extent));
-    std::fill(t.data(), t.data() + t.size(), Tp {1});
-    return t;
+    return ::tn::full<Tp, Layout, Alloc>(std::forward<U>(shape), Tp {1});
 }
 
 template<class Tp     = double,
@@ -332,9 +437,7 @@ template<class Tp     = double,
          class U>
     requires(std::is_convertible_v<U, shape_t>)
 constexpr auto ones(std::initializer_list<U> shape) {
-    TN_ASSERT(core::range_positive(shape), "Invalid shape {}, must be positive",
-              shape);
-    return ones(std::vector<shape_t>(shape.begin(), shape.end()));
+    return ::tn::full<Tp, Layout, Alloc>(shape, Tp {1});
 }
 
 } // namespace tn

@@ -36,6 +36,8 @@ inline void pretty_print_vector(std::ostringstream& ss,
                                 const Tp&           tensor,
                                 size_t              offset,
                                 bool                edges) {
+    using value_type = Tp::value_type;
+
     static const auto& opts = print_options::instance();
 
     auto acc = offset;
@@ -49,15 +51,38 @@ inline void pretty_print_vector(std::ostringstream& ss,
             tmp << "..., ";
             i = tensor.size() - opts.edge_items - 1;
         } else {
-            auto x = tensor(i).item();
+            auto x = tensor.item(i);
+            if constexpr (is_complex_v<value_type>) {
+                auto y = x.real();
+                auto z = x.imag();
+                if (y >= 0)
+                    tmp << " ";
+                if ((opts.suppress
+                     && std::abs(y) < std::pow(10, -opts.precision))
+                    || std::abs(y) < opts.min_small)
+                    tmp << 0.0;
+                else
+                    tmp << y;
+                if (z >= 0)
+                    tmp << "+";
+                if ((opts.suppress
+                     && std::abs(z) < std::pow(10, -opts.precision))
+                    || std::abs(z) < opts.min_small)
+                    tmp << 0.0;
+                else
+                    tmp << z;
+                tmp << "j";
 
-            if (x >= 0)
-                tmp << " ";
-            if ((opts.suppress && std::abs(x) < std::pow(10, -opts.precision))
-                || std::abs(x) < opts.min_small)
-                tmp << 0.0;
-            else
-                tmp << x;
+            } else {
+                if (x >= 0)
+                    tmp << " ";
+                if ((opts.suppress
+                     && std::abs(x) < std::pow(10, -opts.precision))
+                    || std::abs(x) < opts.min_small)
+                    tmp << 0.0;
+                else
+                    tmp << x;
+            }
             if (i != tensor.size() - 1)
                 tmp << ", ";
         }
@@ -151,7 +176,7 @@ inline void pretty_print(std::ostringstream& ss, const Tp& tensor) {
     for (size_t i = 1; i < tensor.size(); ++i)
         min = std::min(min, std::abs(data[i]));
 
-    if (min < opts.min_sci)
+    if (min != 0 && min < opts.min_sci)
         ss << std::scientific;
 
     ss << "tensor(";

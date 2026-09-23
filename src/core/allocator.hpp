@@ -2,6 +2,7 @@
 #define TENPACK_ALLOCATOR_H_DEFINED
 
 #include "config.hpp"
+#include "types.hpp"
 
 #include <memory>
 
@@ -48,7 +49,8 @@ constexpr bool operator!=(const aligned_allocator<Tp1, Align1>&,
 }
 
 template<class Tp, class Alloc>
-    requires(std::is_arithmetic_v<std::remove_extent_t<Tp>>)
+    requires(std::is_arithmetic_v<std::remove_extent_t<Tp>>
+             || core::is_complex_v<std::remove_extent_t<Tp>>)
 constexpr auto allocate_shared_fast(Alloc&& allocator, size_t n) {
     auto ptr = allocator.allocate(n);
     std::uninitialized_default_construct(ptr, ptr + n);

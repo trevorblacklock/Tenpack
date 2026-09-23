@@ -10,6 +10,8 @@
 #include "core/types.hpp"
 
 #include <benchmark/benchmark.h>
+#include <functional>
+#include <type_traits>
 
 // inline void index_test(benchmark::State& state) {
 //     auto a = tn::random::standard_normal({100, 100, 100});
@@ -31,15 +33,14 @@
 
 int main() {
 
-    auto a = tn::random::standard_normal({2, 2});
-    auto b = tn::random::standard_normal({2, 2}).T();
+    auto a = tn::random::standard_normal({2, 2, 4});
+    auto b = tn::random::standard_normal({2, 4}).T();
 
-    fmt::println("{}", a);
-    fmt::println("{}", b);
+    auto c = a.view<std::complex<double>>();
+    auto d = b.view<std::complex<double>>();
 
-    auto c = tn::apply(std::plus(), a, b);
+    auto e = tn::apply(
+        static_cast<double (*)(const std::complex<double>&)>(std::abs), c);
 
-    tn::transform(std::minus(), c, c, b);
-
-    fmt::println("{}", c(1, 0));
+    fmt::println("{}", e);
 }
